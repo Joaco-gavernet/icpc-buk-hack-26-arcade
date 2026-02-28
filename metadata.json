@@ -1,4 +1,4 @@
 {
-  "game_name": "Minimalist Pong",
-  "description": "Classic Pong with 1P vs AI or 2P mode. First to 5 wins!"
+  "game_name": "Snake Duel: Crush Ring",
+  "description": "Neon 1v1 snake showdown. Touch the border, yourself, or the enemy and you lose. The arena ring shrinks over time, and the smaller snake gets a slight speed boost for comeback potential. Even if you're down on your luck you can still catch up since the losing snake gets longer. Best of 5 (first to 3)."
 }
