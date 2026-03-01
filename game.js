@@ -15,7 +15,7 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
   const WIN_ROUNDS = 3;
 
   const SHRINK_EVERY = 10500;
-  const WARN_MS = 2800;
+  const WARN_MS = 3200;
   const MIN_INNER = 7;
 
   const DIR = { U: { x: 0, y: -1 }, D: { x: 0, y: 1 }, L: { x: -1, y: 0 }, R: { x: 1, y: 0 } };
@@ -35,14 +35,29 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
     dim: 0x9a9ab5
   };
 
+  const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+  const RANKS = [
+    { name: 'NEWBIE', hex: '#808080', body: 0x808080, head: 0x808080 },
+    { name: 'PUPIL', hex: '#008000', body: 0x008000, head: 0x008000 },
+    { name: 'SPECIALIST', hex: '#03A89E', body: 0x03A89e, head: 0x03A89e },
+    { name: 'EXPERT', hex: '#0000FF', body: 0x0000ff, head: 0x0000ff },
+    { name: 'CANDIDATE MASTER', hex: '#AA00AA', body: 0xaa00aa, head: 0xaa00aa },
+    { name: 'MASTER', hex: '#FF8C00', body: 0xff8c00, head: 0xff8c00 },
+    { name: 'GRANDMASTER', hex: '#FF0000', body: 0xff0000, head: 0xff0000 },
+    { name: 'LGM', hex: '#FF0000', body: 0xff0000, head: 0x151515 }
+  ];
+
+  const selectedSkins = { p1: 2, p2: 6 };
+
   function maxInset() {
     const mx = Math.floor((COLS - MIN_INNER) / 2) - 1;
     const my = Math.floor((ROWS - MIN_INNER) / 2) - 1;
     return Math.max(0, Math.min(mx, my));
   }
 
-  function createSnake(x, y, d, color, name) {
-    return { body: [{ x, y }, { x: x - DIR[d].x, y: y - DIR[d].y }, { x: x - 2 * DIR[d].x, y: y - 2 * DIR[d].y }], dir: d, next: d, alive: true, color, name, grow: 0, boost: 0 };
+  function createSnake(x, y, d, color, headColor, name) {
+    return { body: [{ x, y }, { x: x - DIR[d].x, y: y - DIR[d].y }, { x: x - 2 * DIR[d].x, y: y - 2 * DIR[d].y }], dir: d, next: d, alive: true, color, headColor: headColor || color, name, grow: 0, boost: 0 };
   }
 
   function setDir(s, d) {
@@ -100,9 +115,9 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
     return null;
   }
 
-  function spawnFood(state) {
+  function spawnFood(state, letterIndex) {
     const c = freeCell(state);
-    state.food = c || null;
+    state.food = c ? { x: c.x, y: c.y, ch: LETTERS[letterIndex % LETTERS.length] } : null;
   }
 
   function tstyle(size, color, weight) {
@@ -145,21 +160,74 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
       g.fillStyle(C.bg1, 0.9);
       g.fillRect(0, 0, GW, GH);
 
-      this.add.text(GW / 2, 90, 'SNAKE DUEL', tstyle(72, '#f2f2ff', 'bold')).setOrigin(0.5);
-      this.add.text(GW / 2, 160, 'CRUSH RING', tstyle(44, '#ff2a6d', 'bold')).setOrigin(0.5);
+      const logoY = 92;
+      const tSnake = this.add.text(0, logoY, 'SNAKE', tstyle(70, '#5E6674', 'bold')).setOrigin(0, 0.5);
+      const tForces = this.add.text(0, logoY, 'FORCES', tstyle(70, '#2F79C3', 'bold')).setOrigin(0, 0.5);
+      const totalLogoW = tSnake.width + tForces.width - 2;
+      const logoX = (GW - totalLogoW) / 2;
+      tSnake.setX(logoX);
+      tForces.setX(logoX + tSnake.width - 2);
 
-      this.add.text(GW / 2, 280, 'HIT BORDER / YOUR BODY / ENEMY BODY = LOSE', tstyle(18, '#f2f2ff', '600')).setOrigin(0.5);
-      this.add.text(GW / 2, 310, 'SHORTER SNAKE GETS A SMALL SPEED BOOST', tstyle(18, '#9a9ab5', '600')).setOrigin(0.5);
-      this.add.text(GW / 2, 340, 'THE RING SHRINKS. SURVIVE THE CRUSH.', tstyle(18, '#f2f2ff', '600')).setOrigin(0.5);
-      this.add.text(GW / 2, 420, 'FIRST TO 3 ROUNDS WINS', tstyle(20, '#fff45a', 'bold')).setOrigin(0.5);
+      const ulY = logoY + 46;
+      const ulGap = 6;
+      const ulW = (totalLogoW - ulGap * 2) / 3;
+      g.fillStyle(0xf2cf55, 0.95);
+      g.fillRect(logoX, ulY, ulW, 4);
+      g.fillStyle(0x2f79c3, 0.95);
+      g.fillRect(logoX + ulW + ulGap, ulY, ulW, 4);
+      g.fillStyle(0xd94343, 0.95);
+      g.fillRect(logoX + ulW * 2 + ulGap * 2, ulY, ulW, 4);
+      this.add.text(GW / 2, 228, 'PICK RANK SKINS', tstyle(22, '#fff45a', 'bold')).setOrigin(0.5);
+      const p1Skin = this.add.text(GW / 2, 276, '', tstyle(26, '#03A89E', 'bold')).setOrigin(0.5);
+      const p2Skin = this.add.text(GW / 2, 318, '', tstyle(26, '#ff0000', 'bold')).setOrigin(0.5);
 
-      const t = this.add.text(GW / 2, 500, 'PRESS START', tstyle(28, '#00e5ff', 'bold')).setOrigin(0.5);
+      this.add.text(GW / 2, 390, 'HIT BORDER / YOUR BODY / ENEMY BODY = LOSE', tstyle(18, '#f2f2ff', '600')).setOrigin(0.5);
+      this.add.text(GW / 2, 420, 'HEAD-ON: LONGER SNAKE WINS', tstyle(18, '#9a9ab5', '600')).setOrigin(0.5);
+      this.add.text(GW / 2, 450, 'SHORTER SNAKE GETS A SMALL SPEED BOOST', tstyle(18, '#9a9ab5', '600')).setOrigin(0.5);
+      this.add.text(GW / 2, 480, 'THE RING SHRINKS. SURVIVE THE CRUSH.', tstyle(18, '#f2f2ff', '600')).setOrigin(0.5);
+
+      const t = this.add.text(GW / 2, 540, 'PRESS START', tstyle(28, '#00e5ff', 'bold')).setOrigin(0.5);
       this.tweens.add({ targets: t, alpha: 0.2, duration: 450, yoyo: true, repeat: -1 });
 
-      const start = () => this.scene.start('Game');
+      let s1 = selectedSkins.p1;
+      let s2 = selectedSkins.p2;
+
+      const renderSkins = () => {
+        const r1 = RANKS[s1];
+        const r2 = RANKS[s2];
+        p1Skin.setText('P1: ' + r1.name);
+        p1Skin.setColor(r1.hex);
+        p2Skin.setText('P2: ' + r2.name);
+        p2Skin.setColor(r2.hex);
+      };
+
+      const cycle = (v, d) => {
+        const n = RANKS.length;
+        return (v + d + n) % n;
+      };
+
+      const start = () => {
+        selectedSkins.p1 = s1;
+        selectedSkins.p2 = s2;
+        this.scene.start('Game', { r1: s1, r2: s2 });
+      };
+
+      renderSkins();
       this.input.once('pointerdown', start);
+
       const h = e => {
         const k = (e && e.key) ? ('' + e.key).toUpperCase() : '';
+        let changed = false;
+        if (k === 'P1L' || k === 'A') { s1 = cycle(s1, -1); changed = true; }
+        else if (k === 'P1R' || k === 'D') { s1 = cycle(s1, 1); changed = true; }
+        else if (k === 'P2L' || k === 'ARROWLEFT') { s2 = cycle(s2, -1); changed = true; }
+        else if (k === 'P2R' || k === 'ARROWRIGHT') { s2 = cycle(s2, 1); changed = true; }
+
+        if (changed) {
+          renderSkins();
+          return;
+        }
+
         if (k === 'ENTER' || k === ' ' || k === 'START1' || k === 'START2' || k === '1' || k === '2') {
           this.input.keyboard.off('keydown', h);
           start();
@@ -173,9 +241,14 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
     constructor() {
       super({ key: 'Game' });
     }
-    init() {
+    init(data) {
       this.score1 = 0;
       this.score2 = 0;
+      this.rank1 = data && data.r1 != null ? data.r1 : selectedSkins.p1;
+      this.rank2 = data && data.r2 != null ? data.r2 : selectedSkins.p2;
+      selectedSkins.p1 = this.rank1;
+      selectedSkins.p2 = this.rank2;
+      this.letterIndex = 0;
     }
     create() {
       try {
@@ -198,10 +271,11 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
       this.sfx = makeSfx(this);
 
       this.uiScore = this.add.text(GW / 2, 18, '0 - 0', tstyle(28, '#f2f2ff', 'bold')).setOrigin(0.5, 0);
-      this.uiHint = this.add.text(GW / 2, 52, 'FIRST TO 2', tstyle(14, '#9a9ab5', '600')).setOrigin(0.5, 0);
+      this.uiHint = this.add.text(GW / 2, 52, 'FIRST TO ' + WIN_ROUNDS, tstyle(14, '#9a9ab5', '600')).setOrigin(0.5, 0);
       this.uiRing = this.add.text(GW / 2, 74, '', tstyle(16, '#ff2a6d', 'bold')).setOrigin(0.5, 0);
       this.big = this.add.text(GW / 2, GH / 2 - 40, '', tstyle(96, '#f2f2ff', 'bold')).setOrigin(0.5);
       this.sub = this.add.text(GW / 2, GH / 2 + 40, '', tstyle(24, '#fff45a', '600')).setOrigin(0.5);
+      this.foodText = this.add.text(0, 0, 'A', tstyle(18, '#fff45a', 'bold')).setOrigin(0.5).setVisible(false);
 
       this.particles = [];
 
@@ -222,13 +296,16 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
     }
     initRound() {
       const mid = ROWS >> 1;
+      this.letterIndex = 0;
+      const rk1 = RANKS[this.rank1] || RANKS[0];
+      const rk2 = RANKS[this.rank2] || RANKS[1];
       this.state = {
         inset: 0,
-        s1: createSnake(6, mid, 'R', C.p1, 'P1'),
-        s2: createSnake(COLS - 7, mid, 'L', C.p2, 'P2'),
+        s1: createSnake(6, mid, 'R', rk1.body, rk1.head, 'P1'),
+        s2: createSnake(COLS - 7, mid, 'L', rk2.body, rk2.head, 'P2'),
         food: null
       };
-      spawnFood(this.state);
+      spawnFood(this.state, this.letterIndex);
 
       this.tickAcc = 0;
       this.phase = 'countdown';
@@ -282,15 +359,19 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
 
       if (this.phase === 'play') {
         const tto = this.shrinkAt - time;
-        if (this.state.inset < this.shrMax && tto > 0 && tto <= WARN_MS) {
-          const n = 1 + ((tto / 1000) | 0);
-          this.uiRing.setText('RING SHRINKS IN ' + n);
-          if (!this._warnLast || this._warnLast !== n) {
-            this._warnLast = n;
-            this.sfx.beep(260 + n * 60);
+        if (this.state.inset < this.shrMax && tto > 0) {
+          const n = Math.max(1, Math.ceil(tto / 1000));
+          this.uiRing.setText('NEXT SHRINK: ' + n);
+          if (tto <= WARN_MS) {
+            if (!this._warnLast || this._warnLast !== n) {
+              this._warnLast = n;
+              this.sfx.warn(n);
+            }
+          } else {
+            this._warnLast = 0;
           }
         } else {
-          this.uiRing.setText('');
+          this.uiRing.setText(this.state.inset >= this.shrMax ? 'RING: FINAL SIZE' : 'NEXT SHRINK: 0');
           this._warnLast = 0;
         }
 
@@ -322,7 +403,7 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
       this.sfx.shrink();
       try { this.cam.shake(140, 0.012); } catch (e) {}
 
-      if (this.state.food && !insideSafe(this.state.food.x, this.state.food.y, this.state.inset)) spawnFood(this.state);
+      if (this.state.food && !insideSafe(this.state.food.x, this.state.food.y, this.state.inset)) spawnFood(this.state, this.letterIndex);
 
       const s1 = this.state.s1;
       const s2 = this.state.s2;
@@ -352,7 +433,8 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
           s.grow += 1;
           this.sfx.food();
           this.emit(this.cellToPx(h), C.food);
-          spawnFood(st);
+          this.letterIndex = (this.letterIndex + 1) % LETTERS.length;
+          spawnFood(st, this.letterIndex);
         }
       };
 
@@ -361,24 +443,33 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
         const h2 = s2.body[0];
         let d1 = false;
         let d2 = false;
+        let clash = 0;
 
         if (checkSwap) {
           if (h1.x === h2.x && h1.y === h2.y) {
-            d1 = d2 = true;
+            if (s1.body.length > s2.body.length) clash = 1;
+            else if (s2.body.length > s1.body.length) clash = 2;
+            else clash = 3;
           } else if (h1.x === h2o.x && h1.y === h2o.y && h2.x === h1o.x && h2.y === h1o.y) {
-            d1 = d2 = true;
+            if (s1.body.length > s2.body.length) clash = 1;
+            else if (s2.body.length > s1.body.length) clash = 2;
+            else clash = 3;
           }
         }
+
+        if (clash === 1) d2 = true;
+        else if (clash === 2) d1 = true;
+        else if (clash === 3) { d1 = true; d2 = true; }
 
         if (!d1 && s1.alive) {
           if (onWall(h1.x, h1.y, st.inset)) d1 = true;
           else if (hitsBody(h1, s1.body, 1)) d1 = true;
-          else if (hitsBody(h1, s2.body, 0)) d1 = true;
+          else if (!clash && hitsBody(h1, s2.body, 0)) d1 = true;
         }
         if (!d2 && s2.alive) {
           if (onWall(h2.x, h2.y, st.inset)) d2 = true;
           else if (hitsBody(h2, s2.body, 1)) d2 = true;
-          else if (hitsBody(h2, s1.body, 0)) d2 = true;
+          else if (!clash && hitsBody(h2, s1.body, 0)) d2 = true;
         }
 
         if (d1) s1.alive = false;
@@ -512,14 +603,18 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
     }
     drawFood(g, ox, oy, time) {
       const f = this.state.food;
-      if (!f) return;
+      if (!f) {
+        this.foodText.setVisible(false);
+        return;
+      }
       const x = ox + f.x * CS + CS / 2;
       const y = oy + f.y * CS + CS / 2;
       const p = 0.55 + 0.25 * Math.sin(time / 90);
-      g.fillStyle(C.food, 0.25 + 0.25 * p);
-      g.fillCircle(x, y, CS / 2 + 2);
-      g.fillStyle(C.food, 0.9);
-      g.fillCircle(x, y, CS / 2 - 2);
+      g.fillStyle(C.food, 0.16 + 0.18 * p);
+      g.fillRect(x - CS / 2 + 1, y - CS / 2 + 1, CS - 2, CS - 2);
+      this.foodText.setVisible(true);
+      this.foodText.setText(f.ch);
+      this.foodText.setPosition(x, y - 1);
     }
     drawSnakes(g, ox, oy, time) {
       const s1 = this.state.s1;
@@ -534,9 +629,10 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
           const x = ox + c.x * CS;
           const y = oy + c.y * CS;
           const head = i === 0;
-          g.fillStyle(s.color, (head ? 0.35 : 0.18) * blink);
+          const base = head ? s.headColor : s.color;
+          g.fillStyle(base, (head ? 0.35 : 0.18) * blink);
           g.fillRect(x - 1, y - 1, CS + 2, CS + 2);
-          g.fillStyle(s.color, 1 * blink);
+          g.fillStyle(base, 1 * blink);
           g.fillRect(x + 1, y + 1, CS - 2, CS - 2);
           if (head) {
             g.fillStyle(C.ui, 0.95 * blink);
@@ -564,14 +660,14 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
 
       this.add.graphics().fillStyle(C.bg0).fillRect(0, 0, GW, GH);
       const w = this.s1 >= WIN_ROUNDS ? 'P1' : 'P2';
-      const col = w === 'P1' ? '#00e5ff' : '#ff4dff';
+      const col = w === 'P1' ? RANKS[selectedSkins.p1].hex : RANKS[selectedSkins.p2].hex;
       this.add.text(GW / 2, 170, w + ' WINS', tstyle(84, col, 'bold')).setOrigin(0.5);
       this.add.text(GW / 2, 270, this.s1 + ' - ' + this.s2, tstyle(44, '#f2f2ff', 'bold')).setOrigin(0.5);
-      this.add.text(GW / 2, 360, 'REVENGE?', tstyle(26, '#fff45a', 'bold')).setOrigin(0.5);
+      this.add.text(GW / 2, 360, 'BACK TO SKIN SELECT', tstyle(26, '#fff45a', 'bold')).setOrigin(0.5);
       const t = this.add.text(GW / 2, 450, 'PRESS START', tstyle(28, '#9a9ab5', 'bold')).setOrigin(0.5);
       this.tweens.add({ targets: t, alpha: 0.25, duration: 450, yoyo: true, repeat: -1 });
 
-      const go = () => this.scene.start('Game');
+      const go = () => this.scene.start('Menu');
       this.input.once('pointerdown', go);
       const h = e => {
         const k = (e && e.key) ? ('' + e.key).toUpperCase() : '';
@@ -586,7 +682,7 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
 
   function makeSfx(scene) {
     const ctx = scene.sound && scene.sound.context;
-    if (!ctx) return { food: n, death: n, win: n, shrink: n, beep: n };
+    if (!ctx) return { food: n, death: n, win: n, shrink: n, beep: n, warn: n };
 
     function tone(freq, dur, type, vol) {
       try {
@@ -606,6 +702,10 @@ First to 3 rounds wins. Touch border/self/opponent body = lose. Ring shrinks ove
 
     return {
       beep: function (f) { tone(f || 520, 0.06, 'sine', 0.06); },
+      warn: function (n) {
+        const f = n === 1 ? 860 : n === 2 ? 700 : 560;
+        tone(f, 0.09, 'square', 0.09);
+      },
       food: function () { tone(880, 0.07, 'square', 0.09); },
       shrink: function () {
         try {
